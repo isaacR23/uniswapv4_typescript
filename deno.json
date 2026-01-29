@@ -1,0 +1,16 @@
+{
+    "tasks": {
+      "dev": "deno run --env=.env --allow-net --allow-env --allow-read --allow-write --watch --unstable-worker-options main.ts",
+      "start": "deno run --env=.env --allow-net --allow-env --allow-read --allow-write --unstable-worker-options",
+      "test": "deno test --env=.env --allow-net --allow-read --allow-write --allow-env --unstable-worker-options --v8-flags=--max-old-space-size=8192"
+    },
+   "nodeModulesDir": "auto",
+  "imports": {
+    "@std/assert": "jsr:@std/assert@1",
+    "@uniswap/v4-sdk": "npm:@uniswap/v4-sdk@^1.21.4",
+    "@uniswap/sdk-core": "npm:@uniswap/sdk-core@^7.10.1",
+    "@uniswap/universal-router-sdk": "npm:@uniswap/universal-router-sdk@^4.19.5",
+    "ethers": "npm:ethers@5.7.x",
+    "viem": "npm:viem@^2.23.5"
+  }
+}
