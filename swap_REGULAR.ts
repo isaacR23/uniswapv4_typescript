@@ -3,7 +3,6 @@ import {
   USDC_TOKEN,
   USDC_E_TOKEN,
   UNIVERSAL_ROUTER_ADDRESS,
-  UNIVERSAL_ROUTER_ABI,
   RPC_URL,
 } from "./constants_polygon.ts";
 import { ethers } from "ethers";
@@ -12,13 +11,14 @@ import { UNIVERSAL_ROUTER_ABI as UNIVERSAL_ROUTER_ABI_MAINNET } from "./constant
 const _working_variables = {
   PRIVATE_KEY: Deno.env.get("PRIVATE_KEY_THIRD_WEB"),
   RPC_URL,
+  amount: "1.994664",
 };
 
 // Calculate amountOutMinimum based on desired slippage
 // Example: set slippagePercent (e.g., 0.5 for 0.5%)
 const slippagePercent = 0.5;
 // Fetch external value for amountOutEstimate, or replace with logic as needed
-const amountOutEstimate = ethers.utils.parseUnits("1", USDC_TOKEN.decimals); // placeholder
+const amountOutEstimate = ethers.utils.parseUnits(_working_variables.amount, USDC_TOKEN.decimals); // placeholder
 const slippageAmount = amountOutEstimate
   .mul(ethers.BigNumber.from(10000 - Math.floor(slippagePercent * 100)))
   .div(10000);
@@ -32,7 +32,7 @@ export const CurrentConfig: SwapExactInSingle = {
     hooks: "0x0000000000000000000000000000000000000000",
   },
   zeroForOne: true, // The direction of swap is ETH to USDC. Change it to 'false' for the reverse direction
-  amountIn: ethers.utils.parseUnits("1", USDC_E_TOKEN.decimals).toString(),
+  amountIn: ethers.utils.parseUnits(_working_variables.amount, USDC_E_TOKEN.decimals).toString(),
   amountOutMinimum: slippageAmount.toString(),
   hookData: "0x00",
 };

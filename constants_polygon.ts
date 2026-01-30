@@ -34,6 +34,7 @@ export const UNIVERSAL_ROUTER_ADDRESS =
   "0x1095692a6237d83c6a72f3f5efedb9a670c49223";
 export const PERMIT2 = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
 export const RPC_URL = "https://polygon-bor-rpc.publicnode.com"
+// export const RPC_URL = "https://polygon.blockpi.network/v1/rpc/ef1d9a7433155874e6ffbcfcd8aefef489aa28c5"
 
 export const QUOTER_ABI = [
   {
