@@ -10,13 +10,13 @@ import {
   SigningMethod,
 } from "@safe-global/types-kit";
 import { ethers } from "ethers";
-import { RPC_URL, DAI_TOKEN, USDC_TOKEN } from "./constants_polygon.ts";
+import { RPC_URL, DAI_TOKEN, USDC_TOKEN, USDC_E_TOKEN } from "./constants_polygon.ts";
 
 const SAFE_ADDRESS = Deno.env.get('ACCOUNT_ADD_SAFE')
 const OWNER_1_PRIVATE_KEY = Deno.env.get('PRIVATE_KEY_EOA')
 const DESTINATION_ADDRESS = Deno.env.get('ACCOUNT_ADD_THIRD_WEB')
-const _amount = "2.225995"
-const _send_token = USDC_TOKEN
+const _amount = "1.30"
+const _send_token = USDC_E_TOKEN
 
 // Safe.init static factory (Deno type resolution workaround for default export)
 // @ts-ignore: Safe.init default export type not resolved in Deno
