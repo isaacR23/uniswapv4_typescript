@@ -1,0 +1,134 @@
+# swap_EOA.ts — Debug: All Known Errors and Failure Modes
+
+This file documents every error and failure mode encountered or possible during the USDC.e → USDC swap on Polygon.
+
+---
+
+## RPC / Network Errors (ethers.js / Node)
+
+### 1. REPLACEMENT_UNDERPRICED / "replacement fee too low"
+- **When**: Sending a tx when a pending tx from the same EOA already exists (same nonce).
+- **Cause**: Replacement txs must have maxFeePerGas and maxPriorityFeePerGas at least ~10–12% higher than the pending one.
+- **Fix**: Bump gas (e.g. 50% in getPolygonTxOptions) or wait for pending tx to confirm/drop.
+- **Prevention**: waitForNoPendingTx() at script start.
+
+### 2. NONCE_EXPIRED / "nonce has already been used" / "nonce too low"
+- **When**: Sending a tx with a nonce the chain has already seen (e.g. "next nonce 20, tx nonce 17").
+- **Cause**: Ethers or signer uses cached/stale nonce; multiple txs sent in sequence without refreshing.
+- **Fix**: Fetch nonce with provider.getTransactionCount(address, "pending") right before sending and pass it explicitly in tx options.
+- **Note**: No tx hash to look up — RPC rejects before broadcast.
+
+### 3. Tx confirmation timeout / "wait()" never resolves
+- **When**: permit2ApproveTx.wait() or tx4.wait() hangs.
+- **Cause**: Tx stuck in mempool, slow RPC, or tx never mined.
+- **Fix**: wrap wait() in a timeout (e.g. 2 min); on timeout, error includes tx hash for manual Polygonscan check.
+- **Check**: https://polygonscan.com/address/<EOA> for pending txs.
+
+---
+
+## Balance & Allowance Errors
+
+### 4. EOA has no USDC.e balance
+- **When**: amountUsdcE.isZero() — script checks before proceeding.
+- **Cause**: EOA holds 0 USDC.e.
+- **Fix**: Ensure EOA has USDC.e before running (e.g. bridge, transfer, or previous swap output).
+
+### 5. Insufficient USDC.e for amount (when using hardcoded amount)
+- **When**: amountUsdcE > actual balance; SETTLE_ALL fails.
+- **Fix**: Use exact balance (balanceOf) instead of hardcoded amount.
+
+### 6. ERC20 allowance insufficient (USDC.e → Permit2)
+- **When**: usdcEContract.allowance(owner, PERMIT2) < amountUsdcE.
+- **Cause**: Permit2 not approved to pull USDC.e.
+- **Fix**: Call usdcEContract.approve(PERMIT2, MaxUint256).
+
+### 7. Permit2 AllowanceExpired (0xd81b2f2e)
+- **When**: Permit2 allowance for Universal Router has expired or amount < required.
+- **Cause**: Permit2.approve() not called or expiration in the past.
+- **Fix**: Call permit2Contract.approve(token, spender, amount, expiration) with future deadline.
+- **Optimization**: Check permit2Contract.allowance() first; skip approve if amount and expiration valid.
+
+---
+
+## Contract Reverts (Universal Router / Quoter / V4)
+
+### 8. V4TooLittleReceived
+- **When**: Swap output less than amountOutMinimum (slippage).
+- **Cause**: Price moved between quote and execution; slippage too tight.
+- **Fix**: Increase slippage (e.g. 2% instead of 0.5%).
+
+### 9. V4TooMuchRequested
+- **When**: More input requested than allowed.
+- **Cause**: SETTLE_ALL / TAKE_ALL mismatch or insufficient balance.
+
+### 10. BalanceTooLow / InsufficientToken / InsufficientBalance
+- **When**: User doesn't have enough tokens for the swap.
+- **Cause**: Balance changed after quote, or approval/allowance issue.
+
+### 11. TransactionDeadlinePassed
+- **When**: Block timestamp > deadline when tx executes.
+- **Cause**: Long delays (pending tx, slow RPC) or deadline set too short.
+- **Fix**: Use longer deadline (e.g. 1 hour); retry with fresh deadline.
+
+### 12. NotEnoughLiquidity (Quoter)
+- **When**: quoteExactInputSingle reverts.
+- **Cause**: Pool lacks liquidity for requested amount or pool doesn't exist.
+
+### 13. InvalidPath / InvalidReserves / SliceOutOfBounds
+- **When**: Malformed swap config or pool state.
+- **Cause**: Wrong poolKey, currency addresses, or pool metadata.
+
+### 14. ExecutionFailed (Universal Router)
+- **When**: Inner command fails; error includes commandIndex and message.
+- **Cause**: Underlying swap/redeem/transfer failed.
+
+### 15. FromAddressIsNotOwner
+- **When**: Caller is not the token owner in context of Permit2 / Universal Router.
+
+---
+
+## Gas & Polygon-Specific
+
+### 16. Gas price too low (Polygon rejects)
+- **When**: Default ethers gas below Polygon minimum.
+- **Cause**: Polygon expects min ~25 Gwei tip.
+- **Fix**: getPolygonTxOptions() enforces MIN_TIP_GWEI and applies bump.
+
+### 17. Insufficient MATIC for gas
+- **When**: EOA has no MATIC to pay for gas.
+- **Cause**: Need native token for tx fees.
+- **Fix**: Fund EOA with MATIC.
+
+---
+
+## Script / Runtime Errors
+
+### 18. permit2Expiration.toNumber is not a function
+- **When**: Destructuring Permit2 allowance return; expiration may not be ethers BigNumber.
+- **Fix**: Use Number(permit2Expiration) instead of permit2Expiration.toNumber().
+
+### 19. PRIVATE_KEY_EOA missing
+- **When**: Deno.env.get("PRIVATE_KEY_EOA") is undefined.
+- **Fix**: Set in .env or environment.
+
+### 20. Timeout waiting for pending tx(s)
+- **When**: waitForNoPendingTx times out (3 min default).
+- **Cause**: Pending tx stuck; RPC or mempool issue.
+- **Fix**: Check Polygonscan; cancel/replace pending tx or wait for network to clear.
+
+---
+
+## Summary: Mitigations in swap_EOA.ts
+
+| Error                     | Mitigation                                                |
+|---------------------------|-----------------------------------------------------------|
+| Replacement underpriced   | 50% gas bump; waitForNoPendingTx                          |
+| Nonce expired             | Explicit nonce from getTransactionCount("pending")        |
+| Tx timeout                | waitForTx() with 2 min timeout + tx hash in error         |
+| Zero balance              | Throw early if balance is zero                            |
+| Amount mismatch           | Use exact balanceOf instead of hardcoded                  |
+| ERC20 allowance           | Approve Permit2 if allowance < amount                     |
+| Permit2 expired           | Check allowance(); approve if invalid; skip if valid      |
+| Slippage                  | 2% slippage (200 bps)                                     |
+| Gas too low               | getPolygonTxOptions with 25 Gwei min + bump               |
+| Pending tx block          | waitForNoPendingTx before first tx                        |

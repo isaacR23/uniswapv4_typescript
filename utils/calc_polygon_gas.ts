@@ -11,12 +11,15 @@ export async function getPolygonTxOptions(
   maxFeePerGas: string;
 }> {
   const feeData = await provider.getFeeData();
-  const tip =
+  const GAS_BUMP_PERCENT = 150; // 50% bump to handle replacement txs (REPLACEMENT_UNDERPRICED)
+  const rawTip =
     feeData.maxPriorityFeePerGas?.gte(MIN_TIP_GWEI)
       ? feeData.maxPriorityFeePerGas
       : MIN_TIP_GWEI;
-  const maxFee =
-    feeData.maxFeePerGas?.gte(tip) ? feeData.maxFeePerGas : tip.mul(2);
+  const tip = rawTip.mul(GAS_BUMP_PERCENT).div(100);
+  const rawMaxFee =
+    feeData.maxFeePerGas?.gte(rawTip) ? feeData.maxFeePerGas : rawTip.mul(2);
+  const maxFee = rawMaxFee.mul(GAS_BUMP_PERCENT).div(100);
   return {
     maxPriorityFeePerGas: tip.toString(),
     maxFeePerGas: maxFee.toString(),

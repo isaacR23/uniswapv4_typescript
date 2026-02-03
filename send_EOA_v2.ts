@@ -4,24 +4,20 @@ import { ethers } from "ethers";
 import { RPC_URL, USDC_TOKEN } from "./constants_polygon.ts";
 
 const OWNER_1_PRIVATE_KEY = Deno.env.get("PRIVATE_KEY_EOA");
-const DESTINATION_ADDRESS = Deno.env.get("ACCOUNT_ADD_THIRD_WEB");
-const _amount = "2.094566";
+const DESTINATION_ADDRESS = Deno.env.get("ACCOUNT_ADD_SAFE");
+const _amount = "2.1";
 const _send_token = USDC_TOKEN;
 
 const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
 const signer = new ethers.Wallet(OWNER_1_PRIVATE_KEY as string, provider);
-console.log("[LN:14][send.ts] Starting ERC-20 transfer");
-console.log("[LN:15][send.ts] From:", signer.address);
-console.log("[LN:16][send.ts] To:", DESTINATION_ADDRESS);
+
 
 // Check MATIC balance
 const maticBalance = await provider.getBalance(signer.address);
-console.log("[LN:19][send.ts] MATIC balance:", ethers.utils.formatEther(maticBalance), "MATIC");
 
 // Check current nonce
 const currentNonce = await provider.getTransactionCount(signer.address, "latest");
 const pendingNonce = await provider.getTransactionCount(signer.address, "pending");
-console.log("[LN:23][send.ts] Current nonce:", currentNonce, "Pending nonce:", pendingNonce);
 
 if (currentNonce !== pendingNonce) {
   console.log("[LN:26][send.ts] WARNING: You have", pendingNonce - currentNonce, "pending transaction(s)!");
@@ -39,10 +35,6 @@ const data = iface.encodeFunctionData("transfer", [
 
 // Get current network gas prices
 const feeData = await provider.getFeeData();
-console.log("[LN:40][send.ts] Network gas prices:");
-console.log("  Base Fee:", feeData.lastBaseFeePerGas ? ethers.utils.formatUnits(feeData.lastBaseFeePerGas, "gwei") + " Gwei" : "N/A");
-console.log("  Max Priority Fee:", feeData.maxPriorityFeePerGas ? ethers.utils.formatUnits(feeData.maxPriorityFeePerGas, "gwei") + " Gwei" : "N/A");
-console.log("  Max Fee:", feeData.maxFeePerGas ? ethers.utils.formatUnits(feeData.maxFeePerGas, "gwei") + " Gwei" : "N/A");
 
 // Use aggressive gas pricing with multiplier
 const baseFee = feeData.lastBaseFeePerGas || ethers.BigNumber.from("30000000000"); // 30 Gwei fallback
