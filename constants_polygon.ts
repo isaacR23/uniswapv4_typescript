@@ -24,6 +24,14 @@ export const DAI_TOKEN = new Token(
   "Dai Stablecoin",
 );
 
+export const WPOL_TOKEN = new Token(
+  ChainId.POLYGON,
+  "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+  18,
+  "WPOL",
+  "Wrapped POL",
+);
+
 export const POOL_MANAGER = "0x67366782805870060151383f4bbff9dab53e5cd6";
 export const POSITION_DESCRIPTOR = "0x0892771f0c1b78ad6013d6e5536007e1c16e6794";
 export const POSITION_MANAGER = "0x1ec2ebf4f37e7363fdfe3551602425af0b3ceef9";

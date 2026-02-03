@@ -2,10 +2,11 @@
 
 import { ethers } from "ethers";
 import { RPC_URL, USDC_TOKEN } from "./constants_polygon.ts";
+import { getPolygonTxOptions } from "./utils/calc_polygon_gas.ts";
 
 const OWNER_1_PRIVATE_KEY = Deno.env.get("PRIVATE_KEY_EOA");
-const DESTINATION_ADDRESS = Deno.env.get("ACCOUNT_ADD_SAFE");
-const _amount = "2.1";
+const DESTINATION_ADDRESS = Deno.env.get("ACCOUNT_ADD_THIRD_WEB");
+const _amount = "1.949023";
 const _send_token = USDC_TOKEN;
 
 const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
@@ -33,32 +34,22 @@ const data = iface.encodeFunctionData("transfer", [
   amount,
 ]);
 
-// Get current network gas prices
-const feeData = await provider.getFeeData();
-
-// Use aggressive gas pricing with multiplier
-const baseFee = feeData.lastBaseFeePerGas || ethers.BigNumber.from("30000000000"); // 30 Gwei fallback
-const priorityFee = feeData.maxPriorityFeePerGas || ethers.BigNumber.from("50000000000"); // 50 Gwei fallback
-
-// Increase by 50% to ensure confirmation
-const tip = priorityFee.mul(150).div(100);
-const maxFee = baseFee.mul(2).add(tip); // 2x base fee + priority fee
-
+const gasLimit = 100000;
+const polygonOptions = await getPolygonTxOptions(provider);
 const txOptions = {
-  maxPriorityFeePerGas: tip,
-  maxFeePerGas: maxFee,
-  nonce: currentNonce, // Explicitly set nonce
-  gasLimit: 100000, // Set explicit gas limit for ERC-20 transfer
+  ...polygonOptions,
+  nonce: currentNonce,
+  gasLimit,
 };
 
+const maxFeeBn = ethers.BigNumber.from(polygonOptions.maxFeePerGas);
 console.log("[LN:58][send.ts] Transaction gas settings:");
-console.log("  Max Priority Fee:", ethers.utils.formatUnits(tip, "gwei"), "Gwei");
-console.log("  Max Fee:", ethers.utils.formatUnits(maxFee, "gwei"), "Gwei");
+console.log("  Max Priority Fee:", ethers.utils.formatUnits(polygonOptions.maxPriorityFeePerGas, "gwei"), "Gwei");
+console.log("  Max Fee:", ethers.utils.formatUnits(polygonOptions.maxFeePerGas, "gwei"), "Gwei");
 console.log("  Nonce:", currentNonce);
-console.log("  Gas Limit:", txOptions.gasLimit);
+console.log("  Gas Limit:", gasLimit);
 
-// Estimate max cost
-const maxCost = maxFee.mul(txOptions.gasLimit);
+const maxCost = maxFeeBn.mul(gasLimit);
 console.log("[LN:65][send.ts] Estimated max cost:", ethers.utils.formatEther(maxCost), "MATIC");
 
 if (maticBalance.lt(maxCost)) {

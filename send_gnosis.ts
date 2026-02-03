@@ -15,7 +15,7 @@ import { RPC_URL, DAI_TOKEN } from "./constants_polygon.ts";
 const SAFE_ADDRESS = Deno.env.get('ACCOUNT_ADD_SAFE')
 const OWNER_1_PRIVATE_KEY = Deno.env.get('PRIVATE_KEY_EOA')
 const DESTINATION_ADDRESS = Deno.env.get('ACCOUNT_ADD_THIRD_WEB')
-const _amount = "2.099696"
+const _amount = "2.316697"
 const _send_token = DAI_TOKEN
 
 // Safe.init static factory (Deno type resolution workaround for default export)
