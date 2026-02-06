@@ -1,0 +1,71 @@
+[1 tool called]
+
+
+Here are the steps to run **claimGasFor** on SendGas:
+
+---
+
+## 1. Prerequisites
+
+- **Contract** has at least `GAS_AMOUNT` POL (in your code this is **2 ether**).
+- **Recipient** has never claimed (not in `hasClaimed[recipient]`).
+- **Recipient** will sign the EIP-712 message (they need no POL for this).
+
+---
+
+## 2. Off-chain: user signs the message (no gas)
+
+**A. EIP-712 domain (for the SendGas contract)**  
+- **name:** `"SendGas"`  
+- **version:** `"1"`  
+- **chainId:** Polygon mainnet = `137` (or your testnet chainId)  
+- **verifyingContract:** deployed SendGas contract address  
+
+**B. Typed data (what the user signs)**  
+- **Primary type:** `ClaimGasFor`  
+- **Type hash:**  
+  `keccak256("ClaimGasFor(address recipient,uint256 deadline)")`  
+- **Fields:**  
+  - `recipient`: address that will receive the POL (the signer’s address).  
+  - `deadline`: unix timestamp after which the signature is invalid (e.g. `now + 1 hour`).  
+
+**C. Ask the user to sign**  
+- Build the EIP-712 payload (domain + `ClaimGasFor` struct) and have the user sign it with **`eth_signTypedData_v4`** (e.g. in the wallet or your frontend).  
+- You get a 65-byte signature (or `v`, `r`, `s`).  
+- Encode it as a single `bytes` value for the contract (e.g. `abi.encode(r, s, v)` or `concat(r, s, v)` depending on your ABI).
+
+---
+
+## 3. On-chain: call `claimGasFor`
+
+**Who:** Anyone (usually a relayer with POL for gas).
+
+**Call:**
+
+```text
+SendGas.claimGasFor(
+  recipient,   // same address as in the signed message
+  deadline,    // same deadline as in the signed message
+  signature    // the 65-byte EIP-712 signature (bytes)
+)
+```
+
+**Checks the contract does:**  
+- `block.timestamp <= deadline`  
+- `!hasClaimed[recipient]`  
+- `address(this).balance >= GAS_AMOUNT`  
+- EIP-712 digest from `ClaimGasFor(recipient, deadline)` recovers to `recipient`  
+
+If all pass, the contract sends **GAS_AMOUNT** POL to `recipient` and sets `hasClaimed[recipient] = true`.
+
+---
+
+## 4. Summary
+
+| Step | Who | Action |
+|------|-----|--------|
+| 1 | You / frontend | Build EIP-712 message: domain (SendGas, "1", chainId, contract), type `ClaimGasFor(recipient, deadline)`. |
+| 2 | User (recipient) | Sign with `eth_signTypedData_v4` (no tx, no gas). |
+| 3 | Relayer (or user) | Call `claimGasFor(recipient, deadline, signature)` and pay gas; recipient receives POL. |
+
+**Important:** The signer of the typed data **must** be `recipient`, and the `recipient` and `deadline` used in the call must match the signed message exactly.

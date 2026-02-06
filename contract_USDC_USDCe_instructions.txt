@@ -1,0 +1,51 @@
+Here’s how the USDC → USDC.e exchange works in your contract.
+
+---
+
+## Option 1: Approve then swap (2 steps)
+
+**1. Approve (one transaction)**  
+- User allows the BuyUsdce contract to spend their USDC.  
+- Call on **USDC**: `approve(buyUsdceContractAddress, amount)`  
+- Or approve once with a large amount, e.g. `approve(buyUsdceContractAddress, type(uint256).max)`  
+
+**2. Swap (second transaction)**  
+- User calls on **BuyUsdce**: `swapUsdcForUsdCe(usdcAmount)`  
+- Contract pulls `usdcAmount` USDC from the user and sends `usdcAmount * 99 / 100` USDC.e to the user (1% fee).  
+
+**Requirements:**  
+- User holds at least `usdcAmount` USDC.  
+- Contract holds at least `usdcAmount * 99 / 100` USDC.e (6 decimals).  
+
+---
+
+## Option 2: Permit + swap (1 transaction)
+
+**1. Sign permit (off-chain, no gas)**  
+- Build EIP-2612 permit data for **USDC** on Polygon:  
+  - Type: `Permit(owner, spender, value, nonce, deadline)`  
+  - Domain: USDC’s `DOMAIN_SEPARATOR` (name, version, chainId, USDC contract address)  
+  - `owner` = user, `spender` = BuyUsdce contract, `value` = amount, `nonce` = `USDC.nonces(user)`, `deadline` = future timestamp  
+- User signs with `eth_signTypedData_v4` (e.g. in wallet or frontend).  
+- You get `v`, `r`, `s`.  
+
+**2. Swap with permit (one transaction)**  
+- Anyone (usually the user or your app) calls on **BuyUsdce**:  
+  `swapUsdcForUsdCeWithPermit(usdcAmount, deadline, v, r, s)`  
+- Contract calls USDC’s `permit` to set allowance, then does the same swap as above (pull USDC, send USDC.e).  
+
+**Requirements:**  
+- Same as above (user balance, contract USDC.e reserve).  
+- `block.timestamp <= deadline`.  
+- USDC on Polygon must support `permit` (EIP-2612).  
+
+---
+
+## Summary
+
+| Flow              | Step 1                    | Step 2                          |
+|-------------------|---------------------------|----------------------------------|
+| **Approve + swap**| `USDC.approve(contract, amount)` | `swapUsdcForUsdCe(amount)`      |
+| **Permit + swap** | Sign permit off-chain     | `swapUsdcForUsdCeWithPermit(amount, deadline, v, r, s)` |
+
+In both cases the “exchange” is: user gives USDC, contract gives back USDC.e at 1:0.99 (1% fee).
